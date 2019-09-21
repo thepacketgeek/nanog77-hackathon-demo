@@ -17,10 +17,12 @@ This should work with copy/paste; confirmations are used along the way for troub
     # Ubuntu install Python/Pip/Etc
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install exabgp --user
+    pip3 install flask --user
 
     # Confirm Python installations
     python3 -V
     pip3 list | grep exabgp
+    pip3 list | grep flask
 
     # Setup networking
     sudo ip addr add 3001:2:e10a::10/64 dev eth1
@@ -28,9 +30,33 @@ This should work with copy/paste; confirmations are used along the way for troub
     ping -c 3 3001:2:e10a::2
     ping -c 3 3001:1::1
 
+    # Add exabgp Flask API
+    # You can edit and copy/paste this block to replace the ExaBGP config
+    echo "from flask import Flask, request
+    from sys import stdout
+
+    app = Flask(__name__)
+
+    # Setup a command route to listen for prefix advertisements 
+    @app.route('/command', methods=['POST'])
+    def command():
+        command = request.form['command']
+        stdout.write('%s\n' % command)
+        stdout.flush()
+        return '%s\n' % command
+
+    if __name__ == '__main__':
+        app.run(host='3001:2:e10a::10', port=5000)
+    " > ~/http_api.py
+    
     # Add exabgp conf
     # You can edit and copy/paste this block to replace the ExaBGP config
-    echo "neighbor 3001:2:e10a::2 {
+    echo "process my-process {
+        run /usr/bin/python3 /home/tesutocli/http_api.py;
+        encoder json;
+    }
+
+    neighbor 3001:2:e10a::2 {
         router-id 10.10.10.10;
         local-address 3001:2:e10a::10;
         local-as 65010;
@@ -57,6 +83,10 @@ This should work with copy/paste; confirmations are used along the way for troub
 
 # Confirming Setup
 
+## Sniffer to ExaBGP Communication
+
+    curl --form "command=announce route 3001:0:dead:beef::/64 next-hop 3001:3::3" http://[3001:2:e10a::10]:5000/command
+
 ## Router2
 
 ### Check BGP Peers
@@ -72,11 +102,15 @@ Should ouput something similar to:
 
 ### Check BGP Routes
 
-Shows us the Router 1 connection and ExaBGP test routes:
+    show bgp ipv6 uni | b Network
 
-    B    3001:1:ca9::/64
-        [200/0] via 3001:1::1, 00:42:43
-    B    3001:99:a::/64
-        [20/0] via 3001:2:e10a::10, 00:09:19
-    B    3001:99:b::/64
-        [20/0] via 3001:2:e10a::10, 00:09:19
+Shows us the routes learned from ExaBGP :) 
+
+
+    Network            Next Hop            Metric LocPrf Weight Path
+    *  3001:0:dead:beef::/64
+                        3001:3::3                              0 65010 i
+    *>i3001:1:ca9::/64    3001:1::1                0    100      0 i
+    *> 3001:2:e10a::/64   ::                       0         32768 i
+    *> 3001:99:a::/64     3001:2:e10a::10                        0 65010 i
+    *> 3001:99:b::/64     3001:2:e10a::10                        0 65010 i
