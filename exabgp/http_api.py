@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+
+# A Proof-of-Concept Python script that allows ExaBGP to receive and
+# process commands received in HTTP POST requests
+# Not production ready!
+#
+# More details available at:
+#     https://thepacketgeek.com/give-exabgp-an-http-api-with-flask/
+
 from flask import Flask, request
 from sys import stdout
 
