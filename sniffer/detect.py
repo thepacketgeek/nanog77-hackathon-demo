@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
+import logging
 import sys
 from collections import Counter
+from http.client import HTTPConnection
 from functools import partial
 from typing import Dict, NamedTuple, Optional
+from urllib.parse import urlencode
 
 from scapy.all import sniff, IP, TCP
 from scapy.packet import Packet
@@ -19,6 +22,9 @@ from scapy.packet import Packet
 
 # Number of retransmits to wait until traffic redirection
 RETRANSMIT_THRESHOLD = 2
+EXABGP_HOST = "[3001:2:e10a::10]:5000"
+
+logging.basicConfig(level=logging.DEBUG)
 
 
 class SessionTerminated(Exception):
@@ -80,7 +86,29 @@ class FlowStatus(object):
 flows: Dict[FlowKey, FlowStatus] = {}
 
 
+def trigger_exabgp(dst_ip: str):
+    """ Receive a destination IP address and send to ExaBGP """
+    command_template = "announce route {dst_ip}/32 next-hop 3.3.3.3"
+    command = command_template.format(dst_ip=dst_ip)
+    params = urlencode({'command': command})
+    headers = {
+        "Content-type": "application/x-www-form-urlencoded",
+        "Accept": "text/plain",
+    }
+    logging.debug(f"Sending command to ExaBGP: {command}")
+    try:
+        client = HTTPConnection(EXABGP_HOST)
+        client.request("POST", "/command", params, headers)
+    except Exception as e:
+        logging.error(f"Couldn't send command to ExaBGP: {e}")
+
+
 def process_packet(packet: Packet) -> Optional[str]:
+    """ Process the incoming packet, checking if it's a retransmit
+
+        Since this is the `prn` callback in Scapy's `sniff()` function,
+        whatever is returned will be output to the console
+    """
     key = FlowKey.from_packet(packet)
 
     if not key:
@@ -94,7 +122,7 @@ def process_packet(packet: Packet) -> Optional[str]:
     try:
         flow_retransmits = flows[key].analyze(packet)
         if flow_retransmits > RETRANSMIT_THRESHOLD:
-            # TODO: Trigger call to ExaBGP API
+            trigger_exabgp(key.dst_ip)
             return (
                 f"Flow from {key.src_ip}:{key.src_port} --> "
                 f"{key.dst_ip}:{key.dst_port} "
@@ -116,8 +144,8 @@ if __name__ == "__main__":
     sniff_func = partial(sniff, prn=process_packet, filter="tcp")
 
     if filepath:
-        print(f"Detecting retransmits from {filepath}...")
+        logging.info(f"Detecting retransmits from {filepath}...")
         packets = sniff_func(offline=filepath)
     else:
-        print("Detecting retransmits from wire...")
+        logging.info("Detecting retransmits from wire...")
         packets = sniff_func()
