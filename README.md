@@ -6,7 +6,7 @@
 # Setting up the ExaBGP Host
 In order to get the ExaBGP Host up and running, we'll need:
 - Python3 & pip
-- ExaBGP
+- ExaBGP and Flask packages
 - Network setup to talk with Router2
 - ExaBGP Config
 
@@ -14,12 +14,12 @@ In order to get the ExaBGP Host up and running, we'll need:
 ## Commands for ExaBGP Host
 This should work with copy/paste; confirmations are used along the way for troubleshooting
 
-    # Ubuntu install Python/Pip/Etc
+    # Install Python/Pip/Etc on Ubuntu
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install exabgp --user
     pip3 install flask --user
 
-    # Confirm Python installations
+    # Confirm Python installation
     python3 -V
     pip3 list | grep exabgp
     pip3 list | grep flask
@@ -28,10 +28,11 @@ This should work with copy/paste; confirmations are used along the way for troub
     sudo ip addr add 3001:2:e10a::10/64 dev eth1
     # Test networking
     ping -c 3 3001:2:e10a::2
+    # Default route through Router2
     ping -c 3 3001:1::1
 
-    # Add exabgp Flask API
-    # You can edit and copy/paste this block to replace the ExaBGP config
+    # Add ExaBGP API (using Flask)
+    # You can edit and copy/paste this block to update the http_api.py file
     echo "from flask import Flask, request
     from sys import stdout
 
@@ -51,7 +52,7 @@ This should work with copy/paste; confirmations are used along the way for troub
     
     # Add exabgp conf
     # You can edit and copy/paste this block to replace the ExaBGP config
-    echo "process my-process {
+    echo "process http-api {
         run /usr/bin/python3 /home/tesutocli/http_api.py;
         encoder json;
     }
@@ -85,7 +86,8 @@ This should work with copy/paste; confirmations are used along the way for troub
 
 ## Sniffer to ExaBGP Communication
 
-    curl --form "command=announce route 3001:0:dead:beef::/64 next-hop 3001:3::3" http://[3001:2:e10a::10]:5000/command
+    curl --form "command=announce route 3001:0:dead:beef::/64 next-hop 3001:3::3" \
+        http://[3001:2:e10a::10]:5000/command
 
 ## Router2
 
