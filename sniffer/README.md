@@ -1,5 +1,12 @@
+# Setting up the Detection/Sniffer Host
+In order to get the Detection host up and running, we'll need:
+- Python3 & pip
+- Scapy package
+- Detection script copied & running
+
+
 # Installing Python & Scapy
-Similar to the ExaBGP host, we'll need to install Python, Scapy, and get networking setup:
+Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `detect.py` script running:
 
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install scapy --user
