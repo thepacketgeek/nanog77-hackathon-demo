@@ -13,5 +13,5 @@ There are 4 routers and 2 Ubuntu hosts. The network has:
 # Setting up the Demo
 We'll need the following components setup to get the Demo up and running. There are guides to setup each component along with steps for verification along the way. Follow these guides in the order specified:
 1. Network setup ([Router configs](./configs))
-1. ExaBGP ([Host setup](./exabgp/README.md))
-1. Detection/Sniffer ([Host setup](./sniffer/README.md))
+1. ExaBGP ([Host setup](./exabgp))
+1. Detection/Sniffer ([Host setup](./sniffer))
