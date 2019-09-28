@@ -21,6 +21,7 @@ This should work with copy/paste; confirmations are used along the way for troub
 
     # Setup networking
     sudo ip addr add 3001:2:e10a::10/64 dev eth1
+    sudo ip -6 route add default via 3001:2:e10a::2
     # Test networking
     ping -c 3 3001:2:e10a::2
     # Default route through Router2
@@ -58,11 +59,30 @@ This should work with copy/paste; confirmations are used along the way for troub
         local-as 65010;
         peer-as 65000;
 
+        family {
+            ipv4 unicast;
+            ipv4 flow;
+            ipv6 unicast;
+            ipv6 flow;
+        }
         announce {
             ipv6 {
                 # Test routes to confirm ExaBGP advertisement is working
                 unicast 3001:99:a::/64 next-hop self;
                 unicast 3001:99:b::/64 next-hop self;
+            }
+        }
+
+        # Static FlowSpec test to confirm ExaBGP advertisement is working
+        flow {
+            route TEST {
+                match {
+                    source 3001:99:a::10/128;
+                    destination 3001:99:b::10/128;
+                }
+                then {
+                    redirect 6:302;
+                }
             }
         }
     }
@@ -75,35 +95,76 @@ This should work with copy/paste; confirmations are used along the way for troub
 
 # Confirming Setup
 
-## Sniffer to ExaBGP Communication
-
-    curl --form "command=announce route 3001:0:dead:beef::/64 next-hop 3001:3::3" \
-        http://[3001:2:e10a::10]:5000/command
-
-## Router2
+## Router2 Peering
 
 ### Check BGP Peers
-    show bgp ipv6 unicast summary | b Neighbor
-
-Should ouput something similar to:
-
-    Neighbor        Spk    AS MsgRcvd MsgSent   TblVer  InQ OutQ  Up/Down  St/PfxRcd
-    3001:1::1         0 65000      45      47        6    0    0 00:41:38          1
-    3001:2:e10a::10   0 65010      53      52        6    0    0 00:08:09          2
-
-    show route ipv6 bgp
+    router2> show bgp summary
+    ...
+    Peer                     AS      InPkt     OutPkt    OutQ   Flaps Last Up/Dwn State...
+    3001:1::1             65000        183        198       0       0     1:20:53 Establ
+    inet.0: 0/1/1/0
+    inet6.0: 0/0/0/0
+    3001:2:e10a::10       65010         13          5       0       2        2:28 Establ
+    inet6.0: 2/3/2/0
+    inet6flow.0: 0/0/0/0
 
 ### Check BGP Routes
 
-    show bgp ipv6 uni | b Network
+    router2> show route protocol bgp all table inet6
 
-Shows us the routes learned from ExaBGP :) 
+    inet6.0: 21 destinations, 21 routes (20 active, 0 holddown, 1 hidden)
+    + = Active Route, - = Last Active, * = Both
 
+    3001:0:dead:beef::/64
+                        [BGP ] 00:00:27, from 3001:2:e10a::10
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:3::3 via ge-0/0/9.0
+    3001:99:a::/64     *[BGP/170] 00:01:53, localpref 100
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:2:e10a::10 via ge-0/0/9.0
+    3001:99:b::/64     *[BGP/170] 00:01:53, localpref 100
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:2:e10a::10 via ge-0/0/9.0
 
-    Network            Next Hop            Metric LocPrf Weight Path
-    *  3001:0:dead:beef::/64
-                        3001:3::3                              0 65010 i
-    *>i3001:1:ca9::/64    3001:1::1                0    100      0 i
-    *> 3001:2:e10a::/64   ::                       0         32768 i
-    *> 3001:99:a::/64     3001:2:e10a::10                        0 65010 i
-    *> 3001:99:b::/64     3001:2:e10a::10                        0 65010 i
+### Check the FlowSpec routes:
+
+Router2:
+
+    router2> show route protocol bgp table inet6flow.0
+
+    inet6flow.0: 1 destinations, 1 routes (1 active, 0 holddown, 0 hidden)
+    + = Active Route, - = Last Active, * = Both
+
+    3001:4:b2::10/128,3001:1:a1::10/128/term:1
+                    *[BGP/170] 00:00:14, localpref 100, from 3001:2:e10a::10
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:3::3
+
+Router1:
+
+    router1> show route protocol bgp table inet6flow
+
+    inet6flow.0: 2 destinations, 2 routes (1 active, 0 holddown, 1 hidden)
+    + = Active Route, - = Last Active, * = Both
+
+    3001:99:b::10/128,3001:99:a::10/128/term:1
+                    *[BGP/170] 00:02:30, localpref 100, from 3001:2::2
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:3::3
+
+Router4:
+    
+    router4#show bgp ipv6 flowspec
+    BGP table version is 2, local router ID is 4.4.4.4
+    Status codes: s suppressed, d damped, h history, * valid, > best, i - internal,
+                r RIB-failure, S Stale, m multipath, b backup-path, f RT-Filter,
+                x best-external, a additional-path, c RIB-compressed,
+                t secondary path, L long-lived-stale,
+    Origin codes: i - IGP, e - EGP, ? - incomplete
+    RPKI validation codes: V valid, I invalid, N Not found
+
+        Network          Next Hop            Metric LocPrf Weight Path
+    * i  Dest:3001:99::/0-32,Source:3001:99:1::10/0-128
+                        3001:3::3                     100      0 65010 i
+    *>i  Dest:3001:99:B::10/0-128,Source:3001:99:A::10/0-128
+                        3001:3::3                     100      0 65010 i
