@@ -1,17 +1,27 @@
 # nanog77-hackathon-demo
- Demo of Traffic Exceptions for Nanog77 Hackathon
+ The Nanog77 Hackathon theme is **Traffic Exceptions** and this repo contains demos that show how we can manage traffic exceptions using these 3 components:
 
-# The Lab Network
-There are 4 routers and 2 Ubuntu hosts. The network has:
-- IGP: OSPF & OSPFv3
-- BGP: IPv6 Sessions carrying IPv4/IPv6 advertisements
-- BGP Peering with the ExaBGP peer for receiving injected NLRI
+### Exception Triggering
+In order to manage our out-of-the-ordinary flows, we need a way to trigger and flag the flows that are interesting
 
-![Topology Diagram](./Topology.png)
+### Network Config
+The network should have a way of responding to exceptions and apply policies to get our traffic to the desired network segments
+
+### Traffic Influencer
+The piece that ties the previous two components together, this is how we inject policy into the network from an exception flow we've flagged.
 
 
-# Setting up the Demo
-We'll need the following components setup to get the Demo up and running. There are guides to setup each component along with steps for verification along the way. Follow these guides in the order specified:
-1. Network setup ([Router configs](./configs))
-1. ExaBGP ([Host setup](./exabgp))
-1. Detection/Sniffer ([Host setup](./sniffer))
+# [Basic BGP Demo](https://github.com/thepacketgeek/nanog77-hackathon-demo/tree/basic-bgp)
+Let's build a foundation on how to get ExaBGP talking to our network
+
+![Topology Diagram](./Demo1.png)
+
+Instructions and files can be found [in this branch](https://github.com/thepacketgeek/nanog77-hackathon-demo/tree/basic-bgp)
+
+# [FlowSpec for Granular Traffic Redirection/Monitoring](https://github.com/thepacketgeek/nanog77-hackathon-demo/tree/flowspec)
+
+In this demo, we look at how to have more granular influence, at the TCP session level.
+
+![Topology Diagram](./Demo2.png)
+
+Instructions and files can be found [in this branch](https://github.com/thepacketgeek/nanog77-hackathon-demo/tree/flowspec)
