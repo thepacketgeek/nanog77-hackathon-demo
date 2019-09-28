@@ -88,7 +88,7 @@ flows: Dict[FlowKey, FlowStatus] = {}
 
 def trigger_exabgp(dst_ip: str):
     """ Receive a destination IP address and send to ExaBGP """
-    command_template = "announce route {dst_ip}/32 next-hop 3.3.3.3"
+    command_template = "announce flow route source {src_ip}/128 destination {dst_ip}/128 redirect 6:302"
     command = command_template.format(dst_ip=dst_ip)
     params = urlencode({'command': command})
     headers = {

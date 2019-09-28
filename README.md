@@ -1,11 +1,19 @@
 # nanog77-hackathon-demo
  Demo of Traffic Exceptions for Nanog77 Hackathon
 
+# The Scenario
+Router2 is in a Traffic Analysis segment of the network where we have traffic monitors and packet captures happening in order to 
+
 # The Lab Network
-There are 4 routers and 2 Ubuntu hosts. The network has:
-- IGP: OSPF & OSPFv3
-- BGP: IPv6 Sessions carrying IPv4/IPv6 advertisements
-- BGP Peering with the ExaBGP peer for receiving injected NLRI
+The network has:
+- 4 Routers
+  - OSPFv3, BGP peerings over IPv6 (carrying IPv6 Unicast & FlowSpec)
+- 1 ExaBGP Host
+  - Peering with Router2 to inject FlowSpec NLRI
+- 1 Sniffer Host
+  - Used to trigger on TCP Retransmit traffic
+- 2 Test Hosts
+  - The demo is trying to influence traffic between these hosts
 
 ![Topology Diagram](./Topology.png)
 
@@ -14,9 +22,11 @@ There are 4 routers and 2 Ubuntu hosts. The network has:
 We'll need the following components setup to get the Demo up and running. There are guides to setup each component along with steps for verification along the way. Follow these guides in the order specified:
 1. Network setup ([Router configs](./configs))
 1. ExaBGP ([Host setup](./exabgp))
+1. Sniffer ([Host setup](./sniffer))
 
 
 # Setting up the test hosts
+We need to get our test hosts ready to communicate using the network we've just built
 
 Host1:
 
@@ -38,10 +48,23 @@ Host2:
 
 
 # Testing traffic influence
+Ok, now let's see what FlowSpec can do for us.
 
-Host1:
-    
-    $ traceroute -s 3001:1:a::10 3001:4:b::10
+## Steady State
+We can see there are currently no FlowSpec rules on Router1:
+
+    router1> show route table inet6flow.0
+    inet6flow.0: 1 destinations, 1 routes (0 active, 0 holddown, 1 hidden)
+
+Nor Router4:
+
+    router4#show bgp ipv6 flow
+    router4#
+
+
+Due to the high OSPF cost of Router2's interface, that will not be used for transit between Router1 and Router4:
+
+    host1$ traceroute -s 3001:1:a::10 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
      1  3001:1:a::1 (3001:1:a::1)  6.959 ms  6.915 ms  6.888 ms
      2  3001:13::3 (3001:13::3)  14.177 ms  14.120 ms  14.123 ms
@@ -49,23 +72,13 @@ Host1:
      4  3001:4:b::10 (3001:4:b::10)  22.202 ms  22.186 ms  22.169 ms
 
 
-Router1:
-
-    router1> show route table inet6flow.0
-    inet6flow.0: 1 destinations, 1 routes (0 active, 0 holddown, 1 hidden)
-
-Router4:
-
-    router4#show bgp ipv6 flow
-    router4#
-
-
-Host1, simulate a FlowSpec announcement:
+## Traffic Exception, FlowSpec rule injected
+From Host1, we'll simulate a FlowSpec announcement (that would typically be coming from Sniffer):
 
     curl --form "command=announce flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
         http://[3001:2:e10a::10]:5000/command
 
-Router1:
+And we can see the FlowSpec rule on Router1:
 
     router1> show route table inet6flow.0
 
@@ -83,14 +96,14 @@ Router1:
     Name                                                Bytes              Packets
     3001:4:b::10/128,3001:1:a::10/128                    1760                   22
 
-Router4:
+And Router4:
    
    router4#show bgp ipv6 flow | b Network
         Network          Next Hop            Metric LocPrf Weight Path
     * i  Dest:3001:4:B::10/0-128,Source:3001:1:A::10/0-128
                         3001:2::2
 
-And Viola!!!
+Viola!!! See that the traffic is now being diverted through Router2 :D
 
     $ traceroute -s 3001:1:a::10 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
