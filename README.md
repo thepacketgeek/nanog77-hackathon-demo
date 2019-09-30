@@ -34,8 +34,10 @@ Host1:
     sudo apt-get install traceroute
     # Setup networking
     sudo ip addr add 3001:1:a::10/64 dev eth1
+    sudo ip addr add 3001:1:a::20/64 dev eth1
     sudo ip -6 route add default via 3001:1:a::1
     # Test networking
+    ping -c 3 3001:4:b::4
     ping -c 3 3001:2:e10a::2
 
 
@@ -61,6 +63,8 @@ Nor Router4:
     router4#show bgp ipv6 flow
     router4#
 
+![SteadyStateTrafficFlow](SteadyState.png)
+
 
 Due to the high OSPF cost of Router2's interface, that will not be used for transit between Router1 and Router4:
 
@@ -70,6 +74,13 @@ Due to the high OSPF cost of Router2's interface, that will not be used for tran
      2  3001:13::3 (3001:13::3)  14.177 ms  14.120 ms  14.123 ms
      3  3001:34::4 (3001:34::4)  14.091 ms  14.062 ms  14.044 ms
      4  3001:4:b::10 (3001:4:b::10)  22.202 ms  22.186 ms  22.169 ms
+    
+    $ traceroute -s 3001:1:a::20 3001:4:b::10
+    traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
+     1  3001:1:a::1 (3001:1:a::1)  7.885 ms  7.730 ms  7.756 ms
+     2  3001:13::3 (3001:13::3)  23.147 ms  23.121 ms  23.099 ms
+     3  3001:34::4 (3001:34::4)  23.053 ms  22.991 ms  23.010 ms
+     4  3001:4:b::10 (3001:4:b::10)  22.994 ms  22.963 ms  22.946 ms
 
 
 ## Traffic Exception, FlowSpec rule injected
@@ -103,7 +114,7 @@ And Router4:
     * i  Dest:3001:4:B::10/0-128,Source:3001:1:A::10/0-128
                         3001:2::2
 
-Viola!!! See that the traffic is now being diverted through Router2 :D
+Viola!!! See that the traffic from ::10 is now being diverted through Router2  (and our ::20 traffic continues transiting through Router3) :D
 
     $ traceroute -s 3001:1:a::10 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
@@ -111,6 +122,20 @@ Viola!!! See that the traffic is now being diverted through Router2 :D
      2  3001:12::2 (3001:12::2)  9.576 ms  9.544 ms  9.499 ms
      3  3001:24::4 (3001:24::4)  21.666 ms  21.637 ms  21.618 ms
      4  * 3001:4:b::10 (3001:4:b::10)  21.559 ms  21.502 ms
+
+    $ traceroute -s 3001:1:a::20 3001:4:b::10
+    traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
+     1  3001:1:a::1 (3001:1:a::1)  7.527 ms  7.399 ms  7.399 ms
+     2  3001:13::3 (3001:13::3)  14.992 ms  14.953 ms  14.955 ms
+     3  3001:34::4 (3001:34::4)  30.839 ms  30.804 ms  30.805 ms
+     4  3001:4:b::10 (3001:4:b::10)  22.710 ms  22.618 ms  22.583 ms
+
+![FlowSpec Traffic Influence](FlowSpecResult.png)
+
+Note that the FlowSpec route is unidirectional, so return traffic from Host2 will still transit through Router2. Since we most likely want the bidirectional flow to transit Router2 for analysis, we'd want our traffic trigger to advertise both directions of the flow to ExaBGP. E.g.:
+
+    curl --form "command=announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
+        http://[3001:2:e10a::10]:5000/command
 
 You can remove the Flowspec route with:
 
@@ -120,11 +145,10 @@ You can remove the Flowspec route with:
 # References
 A big thanks to all the tools and articles that helped make this demo possible:
 - [ExaBGP](https://github.com/Exa-Networks/exabgp)
-- Tesuto
+- [Tesuto](https://www.tesuto.com/) - Network Emulation
 - ["BGP Flowspec redirect with ExaBGP" by Tim Gregory](https://tgregory.org/2018/01/31/bgp-flowspec-redirect-with-exabgp/)
-- ["Using BGP Flowspec (DDoS Mitigation)"](https://archive.nanog.org/sites/default/files/tuesday_general_ddos_ryburn_63.16.pdf)
+- ["Using BGP Flowspec (DDoS Mitigation)"](https://archive.nanog.org/sites/default/files/tuesday_general_ddos_ryburn_63.16.pdf) [[video](https://www.youtube.com/watch?v=ttDUoDf6xzM&t=1935s)]
 - ["BGP Flowspec Tutorial" - Mark Brochu](https://meetings.internet2.edu/media/medialibrary/2018/10/19/20181015-brochu-BGP-Flowspec.pdf)
-- ["Leveraging BGP FlowSpec to Protect Your Infrastructure" - Nicolas Fevrier](https://www.ciscolive.com/c/dam/r/ciscolive/emea/docs/2019/pdf/BRKSPG-3012.pdf)
 - ["Controlling ExaBGP: Interacting from the API"](https://github.com/Exa-Networks/exabgp/wiki/Controlling-ExaBGP-:-interacting-from-the-API)
 
 And some of my own articles that came in handy:

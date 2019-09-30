@@ -74,17 +74,18 @@ This should work with copy/paste; confirmations are used along the way for troub
         }
 
         # Static FlowSpec test to confirm ExaBGP advertisement is working
-        flow {
-            route TEST {
-                match {
-                    source 3001:99:a::10/128;
-                    destination 3001:99:b::10/128;
-                }
-                then {
-                    redirect 6:302;
-                }
-            }
-        }
+        # Uncomment to add this flow at ExaBGP startup time
+        # flow {
+        #     route TEST {
+        #         match {
+        #             source 3001:99:a::10/128;
+        #             destination 3001:99:b::10/128;
+        #         }
+        #         then {
+        #             redirect 6:302;
+        #         }
+        #     }
+        # }
     }
     " > ~/exabgp-conf.ini
 
