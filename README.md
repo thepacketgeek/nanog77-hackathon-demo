@@ -1,9 +1,6 @@
 # nanog77-hackathon-demo
  Demo of Traffic Exceptions for Nanog77 Hackathon
 
-# The Scenario
-Router2 is in a Traffic Analysis segment of the network where we have traffic monitors and packet captures happening in order to 
-
 # The Lab Network
 The network has:
 - 4 Routers
@@ -13,16 +10,30 @@ The network has:
 - 1 Sniffer Host
   - Used to trigger on TCP Retransmit traffic
 - 2 Test Hosts
-  - The demo is trying to influence traffic between these hosts
+  - This demo is trying to influence traffic between these hosts
 
 ![Topology Diagram](./Topology.png)
+
+
+# The Scenario
+- Router2 is in a Traffic Analysis segment of the network where we might have special traffic monitoring happening for troubleshooting.
+- When problematic flows (high TCP Retransmits) occur, we want to divert that traffic from the normal, steady-state path to our special Traffic Analysis segment.
+- Router2 has **high OSPF interface costs so it will not typically be a transit hop**. Flows between Host1 and Host2 will typically transit through Router3:
+
+![SteadyStateTrafficFlow](SteadyState.png)
+
+- When the high TCP Retransmit flows are detected (via our [Sniffer](sniffer/) and the [`detect.py`](sniffer/detect.py) script), an API call is made to the ExaBGP host.
+- ExaBGP will then announce a FlowSpec flow route into the eBGP peering session with Router2.
+- Router2 advertises the FlowSpec NLRI to the rest of the network with a next-hop of itself, in order to draw the interesting traffic towards it.
+- Router1 and Router4 have config to install the FlowSpec routes and redirect traffic to the next-hop (in this case, Router2).
+
+![FlowSpec Traffic Influence](FlowSpecResult.png)
 
 
 # Setting up the Demo
 We'll need the following components setup to get the Demo up and running. There are guides to setup each component along with steps for verification along the way. Follow these guides in the order specified:
 1. Network setup ([Router configs](./configs))
 1. ExaBGP ([Host setup](./exabgp))
-1. Sniffer ([Host setup](./sniffer))
 
 
 # Setting up the test hosts
@@ -56,17 +67,14 @@ Ok, now let's see what FlowSpec can do for us.
 We can see there are currently no FlowSpec rules on Router1:
 
     router1> show route table inet6flow.0
-    inet6flow.0: 1 destinations, 1 routes (0 active, 0 holddown, 1 hidden)
+    router1>
 
 Nor Router4:
 
     router4#show bgp ipv6 flow
     router4#
 
-![SteadyStateTrafficFlow](SteadyState.png)
-
-
-Due to the high OSPF cost of Router2's interface, that will not be used for transit between Router1 and Router4:
+Due to the high OSPF cost of Router2's interfaces, it will not be used for transit between Router1 and Router4. Notice the traceroute shows this flow transiting Router3:
 
     host1$ traceroute -s 3001:1:a::10 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
@@ -130,8 +138,6 @@ Viola!!! See that the traffic from ::10 is now being diverted through Router2  (
      3  3001:34::4 (3001:34::4)  30.839 ms  30.804 ms  30.805 ms
      4  3001:4:b::10 (3001:4:b::10)  22.710 ms  22.618 ms  22.583 ms
 
-![FlowSpec Traffic Influence](FlowSpecResult.png)
-
 Note that the FlowSpec route is unidirectional, so return traffic from Host2 will still transit through Router2. Since we most likely want the bidirectional flow to transit Router2 for analysis, we'd want our traffic trigger to advertise both directions of the flow to ExaBGP. E.g.:
 
     curl --form "command=announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
@@ -142,14 +148,78 @@ You can remove the Flowspec route with:
     curl --form "command=withdraw flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
          http://[3001:2:e10a::10]:5000/command
 
+# Finally, Automatic Detection
+Now that all of the infrastructure support is there, we can add in the detection part of the demo using Python and Scapy!
+
+- First, setup the [Sniffer host](./sniffer):
+
+## Running the script
+The `detect.py` script can be run to sniff packets on the wire:
+
+    $ ./detect.py
+    Detecting retransmits from wire...
+
+It will analyze sniffed TCP flows for retransmits and send messages them to the ExaBGP host specified in the Python file.
+
+If you want to trigger from captured packets instead, just pass in a filepath of a `pcap` file:
+
+    $ ./detect.py host_retransmit.pcap
+    INFO:root:Detecting retransmits from host_retransmit.pcap...
+    reading from file host_retransmit.pcap, link-type EN10MB (Ethernet)
+    DEBUG:root:Sending command to ExaBGP: announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302
+    DEBUG:root:Sending command to ExaBGP: announce flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302
+    Flow 3001:4:b::10:443 <--> 3001:1:a::10:58719 has 5 retransmits!
+    Flow 3001:4:b::10:443 <--> 3001:1:a::10:58719 has 5 retransmits!
+    Flow 3001:4:b::10:443 <--> 3001:1:a::10:58719 has 5 retransmits!
+    Flow 3001:4:b::10:443 <--> 3001:1:a::10:58719 has 5 retransmits!
+    Flow 3001:4:b::10:443 <--> 3001:1:a::10:58719 has 5 retransmits!
+    DEBUG:root:Flow ended: 3001:4:b::10:443 <--> 3001:1:a::10:58719
+    DEBUG:root:Flow ended: 3001:1:a::10:58719 <--> 3001:4:b::10:443
+    DEBUG:root:Flow ended: 3001:1:a::10:58719 <--> 3001:4:b::10:443
+    
+
+## Verifying the ExaBGP Influence
+Running the `detect.py` script against the included host_retransmit.pcap file, we can see that the command was sent to ExaBGP and we now see a new FlowSpec route for the `3001:1:a::10:58719 <--> 3001:4:b::10:443` flow
+
+On Router2:
+
+    router2> show route protocol bgp table inet6flow.0
+
+    inet6flow.0: 2 destinations, 2 routes (2 active, 0 holddown, 0 hidden)
+    + = Active Route, - = Last Active, * = Both
+
+    3001:1:a::10/128,3001:4:b::10/128/term:1
+                    *[BGP/170] 00:06:12, localpref 65000, from 3001:2:e10a::10
+                        AS path: 65010 I, validation-state: unverified
+                        Receive
+    3001:4:b::10/128,3001:1:a::10/128/term:2
+                    *[BGP/170] 00:06:12, localpref 65000, from 3001:2:e10a::10
+                        AS path: 65010 I, validation-state: unverified
+                        Receive
+
+And Router1:
+    
+    router1> show route table inet6flow.0
+
+    inet6flow.0: 2 destinations, 2 routes (2 active, 0 holddown, 0 hidden)
+    + = Active Route, - = Last Active, * = Both
+
+    3001:1:a::10/128,3001:4:b::10/128/term:1
+                    *[BGP/170] 00:07:28, localpref 65000
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:2::2
+    3001:4:b::10/128,3001:1:a::10/128/term:2
+                    *[BGP/170] 00:07:28, localpref 65000
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:2::2
+
 # References
 A big thanks to all the tools and articles that helped make this demo possible:
-- [ExaBGP](https://github.com/Exa-Networks/exabgp)
-- [Tesuto](https://www.tesuto.com/) - Network Emulation
 - ["BGP Flowspec redirect with ExaBGP" by Tim Gregory](https://tgregory.org/2018/01/31/bgp-flowspec-redirect-with-exabgp/)
 - ["Using BGP Flowspec (DDoS Mitigation)"](https://archive.nanog.org/sites/default/files/tuesday_general_ddos_ryburn_63.16.pdf) [[video](https://www.youtube.com/watch?v=ttDUoDf6xzM&t=1935s)]
-- ["BGP Flowspec Tutorial" - Mark Brochu](https://meetings.internet2.edu/media/medialibrary/2018/10/19/20181015-brochu-BGP-Flowspec.pdf)
-- ["Controlling ExaBGP: Interacting from the API"](https://github.com/Exa-Networks/exabgp/wiki/Controlling-ExaBGP-:-interacting-from-the-API)
+- [ExaBGP](https://github.com/Exa-Networks/exabgp): [Interacting from the API](https://github.com/Exa-Networks/exabgp/wiki/Controlling-ExaBGP-:-interacting-from-the-API)
+- [Scapy](https://scapy.net/)
+- [Tesuto](https://www.tesuto.com/) - Network Emulation
 
 And some of my own articles that came in handy:
 - [Influence Routing Decisions with Python and ExaBGP](https://thepacketgeek.com/influence-routing-decisions-with-python-and-exabgp/)
