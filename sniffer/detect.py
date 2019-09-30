@@ -7,7 +7,7 @@ from functools import partial
 from typing import Dict, NamedTuple, Optional
 from urllib.parse import urlencode
 
-from scapy.all import sniff, IP, TCP
+from scapy.all import sniff, IP, IPv6, TCP
 from scapy.packet import Packet
 
 # A Proof-of-Concept Python script that keeps track of TCP flows
@@ -21,7 +21,7 @@ from scapy.packet import Packet
 
 
 # Number of retransmits to wait until traffic redirection
-RETRANSMIT_THRESHOLD = 2
+RETRANSMIT_THRESHOLD = 5
 EXABGP_HOST = "[3001:2:e10a::10]:5000"
 
 logging.basicConfig(level=logging.DEBUG)
@@ -38,8 +38,8 @@ class FlowKey(NamedTuple):
     """
     src_ip: str
     src_port: int
-    dst_ip: str
-    dst_port: int
+    dest_ip: str
+    dest_port: int
 
     @classmethod
     def from_packet(cls, packet: Packet) -> Optional["FlowKey"]:
@@ -50,7 +50,17 @@ class FlowKey(NamedTuple):
                 packet[IP].dst,
                 packet[TCP].dport,
             )
+        if IPv6 in packet and TCP in packet:
+            return cls(
+                packet[IPv6].src,
+                packet[TCP].sport,
+                packet[IPv6].dst,
+                packet[TCP].dport,
+            )
         return None
+    
+    def __repr__(self) -> str:
+        return f"{self.src_ip}:{self.src_port} <--> {self.dest_ip}:{self.dest_port}"
 
 
 class FlowStatus(object):
@@ -65,6 +75,9 @@ class FlowStatus(object):
         # Sequence is Tuple[seq, ack]
         self.last_sequence: Tuple(int, int) = (0, 0)
 
+        # Keep track of whether this flow has been sent to ExaBGP yet
+        self.has_been_triggered = False
+
     def analyze(self, packet: Packet) -> int:
         """ Check TCP sequence number of packet to detect retransmits
 
@@ -76,8 +89,11 @@ class FlowStatus(object):
         else:
             self.retransmits += 1
 
-        # TODO: Handle TCP Flow end to reset the counter
-        #       raise SessionTerminated()
+        # Naive way to detect a session ending and delete from Current Flows
+        if packet[TCP].flags.F or packet[TCP].flags.R:
+            # Will not catch the final ACK, but flow will be left
+            # in an untriggered state and retrans count of 0
+            raise SessionTerminated()
 
         return self.retransmits
 
@@ -86,10 +102,8 @@ class FlowStatus(object):
 flows: Dict[FlowKey, FlowStatus] = {}
 
 
-def trigger_exabgp(dst_ip: str):
-    """ Receive a destination IP address and send to ExaBGP """
-    command_template = "announce flow route source {src_ip}/128 destination {dst_ip}/128 redirect 6:302"
-    command = command_template.format(dst_ip=dst_ip)
+def send_exabgp_command(command: str):
+    """ Send a command to ExaBGP using HTTP POST and form data """
     params = urlencode({'command': command})
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
@@ -101,6 +115,21 @@ def trigger_exabgp(dst_ip: str):
         client.request("POST", "/command", params, headers)
     except Exception as e:
         logging.error(f"Couldn't send command to ExaBGP: {e}")
+
+
+def trigger_exabgp(flow: FlowKey):
+    """ Build the commands to redirect this flow and send to ExaBGP """
+    # We send two commands since FlowSpec flows are unidirection and we want the
+    # bidirectional traffic to go through Router2
+    # This could also include the TCP src/dest ports
+    command_templates = [
+        "announce flow route source {src_ip}/128 destination {dest_ip}/128 redirect 6:302",
+        "announce flow route source {dest_ip}/128 destination {src_ip}/128 redirect 6:302",
+    ]
+    for template in command_templates:
+        command = template.format(src_ip=flow.src_ip, dest_ip=flow.dest_ip)
+        send_exabgp_command(command)
+    
 
 
 def process_packet(packet: Packet) -> Optional[str]:
@@ -121,15 +150,13 @@ def process_packet(packet: Packet) -> Optional[str]:
 
     try:
         flow_retransmits = flows[key].analyze(packet)
-        if flow_retransmits > RETRANSMIT_THRESHOLD:
-            trigger_exabgp(key.dst_ip)
-            return (
-                f"Flow from {key.src_ip}:{key.src_port} --> "
-                f"{key.dst_ip}:{key.dst_port} "
-                f"has {flow_retransmits} retransmits!"
-            )
+        if flow_retransmits >= RETRANSMIT_THRESHOLD:
+            if not flows[key].has_been_triggered:
+                trigger_exabgp(key)
+            flows[key].has_been_triggered = True
+            return f"Flow {key!r} has {flow_retransmits} retransmits!"
     except SessionTerminated:
-        # Cleanup FlowStatus from flows Dict
+        logging.debug(f"Flow ended: {key!r}")
         del flows[key]
 
 
