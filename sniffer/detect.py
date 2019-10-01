@@ -7,11 +7,11 @@ from functools import partial
 from typing import Dict, NamedTuple, Optional
 from urllib.parse import urlencode
 
-from scapy.all import sniff, IP, TCP
+from scapy.all import sniff, IP, UDP, DNS
 from scapy.packet import Packet
 
-# A Proof-of-Concept Python script that keeps track of TCP flows
-# and triggers a function when a retransmit condition is detected
+# A Proof-of-Concept Python script that monitors for malicious
+# DNS requests/requests and triggers a function when this condition is detected
 # Not production ready!
 #
 # More details available at:
@@ -20,75 +20,39 @@ from scapy.packet import Packet
 #     https://thepacketgeek.com/importing-packets-from-trace-files/
 
 
-# Number of retransmits to wait until traffic redirection
-RETRANSMIT_THRESHOLD = 2
 EXABGP_HOST = "[3001:2:e10a::10]:5000"
 
 logging.basicConfig(level=logging.DEBUG)
 
 
-class SessionTerminated(Exception):
-    """ Exception to trigger flow cleanup """
+BAD_QUERIES = set([
+    "badhacks.com.",
+    "malicious-mail-order.net.",
+])
 
 
-class FlowKey(NamedTuple):
-    """ Flow Signature
+def analyze(packet: Packet) -> Optional[str]:
+    """ Check for malicious DNS query/response
 
-        Hashable so it can be used as a Dict key (like in a Counter)
+        If we return a DNS response with a malicious name:
+            we want to redirect the traffic destined to that host
+            to our traffic analysis segment
+
+        If this packet matches, return the destination IP address
     """
-    src_ip: str
-    src_port: int
-    dst_ip: str
-    dst_port: int
-
-    @classmethod
-    def from_packet(cls, packet: Packet) -> Optional["FlowKey"]:
-        if IP in packet and TCP in packet:
-            return cls(
-                packet[IP].src,
-                packet[TCP].sport,
-                packet[IP].dst,
-                packet[TCP].dport,
-            )
-        return None
-
-
-class FlowStatus(object):
-    """ Flow Object to keep track of retransmits
-
-        Hashable so it can be used as a Dict key (like in a Counter)
-    """
-
-    def __init__(self, flow_key: FlowKey) -> None:
-        self.flow_key = flow_key
-        self.retransmits = 0
-        # Sequence is Tuple[seq, ack]
-        self.last_sequence: Tuple(int, int) = (0, 0)
-
-    def analyze(self, packet: Packet) -> int:
-        """ Check TCP sequence number of packet to detect retransmits
-
-            Returns current TCP retransmit count
-        """
-        sequence = (packet[TCP].seq, packet[TCP].ack)
-        if sequence > self.last_sequence:
-            self.last_sequence = sequence
-        else:
-            self.retransmits += 1
-
-        # TODO: Handle TCP Flow end to reset the counter
-        #       raise SessionTerminated()
-
-        return self.retransmits
-
-
-# Keep track of status for each Flow
-flows: Dict[FlowKey, FlowStatus] = {}
+    if DNS in packet:
+        if (
+            packet[DNS].qr  # Is this a Response?
+            and packet[DNS].qd.qname.decode() in BAD_QUERIES
+        ):
+            logging.warning(f"Request for {packet[DNS].qd.qname.decode()}: {packet[DNS].an.rdata}")
+            return packet[DNS].an.rdata
+        
 
 
 def trigger_exabgp(dst_ip: str):
     """ Receive a destination IP address and send to ExaBGP """
-    command_template = "announce route {dst_ip}/32 next-hop 3.3.3.3"
+    command_template = "announce route {dst_ip}/128 next-hop self"
     command = command_template.format(dst_ip=dst_ip)
     params = urlencode({'command': command})
     headers = {
@@ -109,28 +73,10 @@ def process_packet(packet: Packet) -> Optional[str]:
         Since this is the `prn` callback in Scapy's `sniff()` function,
         whatever is returned will be output to the console
     """
-    key = FlowKey.from_packet(packet)
-
-    if not key:
-        # Nothing for us to process
-        return None
-
-    if key not in flows:
-        # Initialize a new flow
-        flows[key] = FlowStatus(key)
-
-    try:
-        flow_retransmits = flows[key].analyze(packet)
-        if flow_retransmits > RETRANSMIT_THRESHOLD:
-            trigger_exabgp(key.dst_ip)
-            return (
-                f"Flow from {key.src_ip}:{key.src_port} --> "
-                f"{key.dst_ip}:{key.dst_port} "
-                f"has {flow_retransmits} retransmits!"
-            )
-    except SessionTerminated:
-        # Cleanup FlowStatus from flows Dict
-        del flows[key]
+    dest_ip = analyze(packet)
+    if dest_ip:
+        trigger_exabgp(dest_ip)
+        return f"DNS Response with {dest_ip} is a malicious query"
 
 
 if __name__ == "__main__":
@@ -141,11 +87,11 @@ if __name__ == "__main__":
         filepath = None
 
     # Set common kwargs for scapy.sniff()
-    sniff_func = partial(sniff, prn=process_packet, filter="tcp")
+    sniff_func = partial(sniff, prn=process_packet, filter="udp port 53")
 
     if filepath:
-        logging.info(f"Detecting retransmits from {filepath}...")
+        logging.info(f"Detecting DNS queries from {filepath}...")
         packets = sniff_func(offline=filepath)
     else:
-        logging.info("Detecting retransmits from wire...")
+        logging.info("Detecting DNS queries from wire...")
         packets = sniff_func()

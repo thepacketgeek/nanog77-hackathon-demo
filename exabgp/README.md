@@ -58,6 +58,11 @@ This should work with copy/paste; confirmations are used along the way for troub
         local-as 65010;
         peer-as 65000;
 
+        family {
+            ipv4 unicast;
+            ipv6 unicast;
+        }
+
         announce {
             ipv6 {
                 # Test routes to confirm ExaBGP advertisement is working
@@ -75,35 +80,24 @@ This should work with copy/paste; confirmations are used along the way for troub
 
 # Confirming Setup
 
-## Sniffer to ExaBGP Communication
+## Check BGP Peers
+We can see the BGP peering from Router2 to ExaBGP:
 
-    curl --form "command=announce route 3001:0:dead:beef::/64 next-hop 3001:3::3" \
-        http://[3001:2:e10a::10]:5000/command
-
-## Router2
-
-### Check BGP Peers
-    show bgp ipv6 unicast summary | b Neighbor
-
-Should output something similar to:
-
+    router2#show bgp ipv6 unicast summary | b Neighbor
     Neighbor        Spk    AS MsgRcvd MsgSent   TblVer  InQ OutQ  Up/Down  St/PfxRcd
-    3001:1::1         0 65000      45      47        6    0    0 00:41:38          1
-    3001:2:e10a::10   0 65010      53      52        6    0    0 00:08:09          2
-
-    show route ipv6 bgp
-
-### Check BGP Routes
-
-    show bgp ipv6 uni | b Network
-
-Shows us the routes learned from ExaBGP :) 
+    3001:1::1         0 65000      62      65       10    0    0 00:56:50          1
+    3001:2:e10a::10   0 65010      12       8       10    0    0 00:00:45          2
+    3001:3::3         0 65000     128     120       10    0    0 00:56:45          0
+    3001:4::4         0 65000     128     120       10    0    0 00:56:34          0
 
 
+## Check ExaBGP Test Routes
+And we should also see the test routes announced by ExaBGP:
+
+    router2#show bgp ipv6 uni | b Network
     Network            Next Hop            Metric LocPrf Weight Path
-    *  3001:0:dead:beef::/64
-                        3001:3::3                              0 65010 i
     *>i3001:1:ca9::/64    3001:1::1                0    100      0 i
     *> 3001:2:e10a::/64   ::                       0         32768 i
     *> 3001:99:a::/64     3001:2:e10a::10                        0 65010 i
     *> 3001:99:b::/64     3001:2:e10a::10                        0 65010 i
+
