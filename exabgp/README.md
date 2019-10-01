@@ -85,7 +85,7 @@ This should work with copy/paste; confirmations are used along the way for troub
 ### Check BGP Peers
     show bgp ipv6 unicast summary | b Neighbor
 
-Should ouput something similar to:
+Should output something similar to:
 
     Neighbor        Spk    AS MsgRcvd MsgSent   TblVer  InQ OutQ  Up/Down  St/PfxRcd
     3001:1::1         0 65000      45      47        6    0    0 00:41:38          1

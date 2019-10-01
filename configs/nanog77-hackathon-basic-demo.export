@@ -1,0 +1,325 @@
+{
+    "access": {
+        "data": [
+            {
+                "action": "drop",
+                "emulation": "NANOG77-Hackathon-Basic-Demo",
+                "emulation_id": "491106973407707139",
+                "id": "491106973875961859",
+                "is_enabled": true,
+                "port": null,
+                "priority": 10000,
+                "protocol": "any",
+                "source_ip": "0.0.0.0/0",
+                "type": "emulation_access"
+            },
+            {
+                "action": "accept",
+                "emulation": "NANOG77-Hackathon-Basic-Demo",
+                "emulation_id": "491106973407707139",
+                "id": "491106973510139907",
+                "is_enabled": true,
+                "port": 22,
+                "priority": 10,
+                "protocol": "tcp",
+                "source_ip": "0.0.0.0/0",
+                "type": "emulation_access"
+            },
+            {
+                "action": "accept",
+                "emulation": "NANOG77-Hackathon-Basic-Demo",
+                "emulation_id": "491106973407707139",
+                "id": "491106973600612355",
+                "is_enabled": true,
+                "port": 80,
+                "priority": 10,
+                "protocol": "tcp",
+                "source_ip": "0.0.0.0/0",
+                "type": "emulation_access"
+            },
+            {
+                "action": "accept",
+                "emulation": "NANOG77-Hackathon-Basic-Demo",
+                "emulation_id": "491106973407707139",
+                "id": "491106973690724355",
+                "is_enabled": true,
+                "port": 443,
+                "priority": 10,
+                "protocol": "tcp",
+                "source_ip": "0.0.0.0/0",
+                "type": "emulation_access"
+            },
+            {
+                "action": "accept",
+                "emulation": "NANOG77-Hackathon-Basic-Demo",
+                "emulation_id": "491106973407707139",
+                "id": "491106973779853315",
+                "is_enabled": true,
+                "port": 830,
+                "priority": 10,
+                "protocol": "tcp",
+                "source_ip": "0.0.0.0/0",
+                "type": "emulation_access"
+            }
+        ],
+        "type": "array"
+    },
+    "devices": {
+        "data": [
+            {
+                "can_snapshot": false,
+                "config": "hostname router2\n!\ninterface Loopback0\n ipv4 address 2.2.2.2 255.255.255.255\n ipv6 address 3001:2::2/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/0\n description To Router1\n ip address 10.12.0.2/24\n ipv6 address 3001:12::2/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/1\n description To Router4\n ip address 10.24.0.2/24\n ipv6 address 3001:24::2/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/8\n description To ExaBGP\n ipv6 address 3001:2:e10a::2/64\n no shutdown\n!\nroute-policy exabgp\n  if source in (3001:a:e10a::10) then\n    set local-preference 4294967295\n  endif\n  pass\nend-policy\n!\nrouter ospf 1\n area 0\n  interface Loopback0\n  !\n  interface GigabitEthernet0/0/0/0\n  !\n  interface GigabitEthernet0/0/0/1\n  !\n !\n!\nrouter ospfv3 1\n area 0\n  interface Loopback0\n  !\n  interface GigabitEthernet0/0/0/0\n  !\n  interface GigabitEthernet0/0/0/1\n  !\n !\n!\nrouter bgp 65000\n address-family ipv4 unicast\n  network 2.2.2.2/32\n !\n address-family ipv6 unicast\n  network 3001:2:e10a::/64\n !\n session-group internal-peers\n  remote-as 65000\n  update-source Loopback0\n !\n neighbor-group internal-peers\n  use session-group internal-peers\n  address-family ipv6 unicast\n  !\n  address-family ipv4 unicast\n  !\n !\n neighbor 3001:1::1\n  use neighbor-group internal-peers\n !\n neighbor 3001:3::3\n  use neighbor-group internal-peers\n !\n neighbor 3001:4::4\n  use neighbor-group internal-peers\n !\n neighbor 3001:2:e10a::10\n  description ExaBGP Peering\n  remote-as 65010\n  update-source GigabitEthernet0/0/0/8\n  address-family ipv4 unicast\n   route-policy exabgp in\n   route-policy exabgp out\n  !\n  address-family ipv6 unicast\n   route-policy exabgp in\n   route-policy exabgp out\n  !\n !\n!\nend\n",
+                "config_id": "491107482082672643",
+                "emulation_id": "491106973407707139",
+                "id": "491107481154322433",
+                "interfaces": [
+                    "gigabit0/0/[0-9]"
+                ],
+                "is_enabled": true,
+                "model_id": "408772694611460097",
+                "model_name": "IOS-XR",
+                "name": "Router2",
+                "slug": "router2",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "346274673784750081",
+                "vendor_name": "Cisco",
+                "version_id": "440231901209100289",
+                "version_name": "6.5.3",
+                "xaxis": 973.106628417969,
+                "yaxis": 447.022186279297
+            },
+            {
+                "can_snapshot": false,
+                "config": "hostname rt1\n!\ninterface Loopback0\n ipv4 address 1.1.1.1 255.255.255.255\n ipv6 address 3001:1::1/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/0\n description To Router2\n ip address 10.12.0.1/24\n ipv6 address 3001:12::1/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/1\n description To Router3\n ip address 10.13.0.1/24\n ipv6 address 3001:13::1/64\n no shutdown\n!\ninterface GigabitEthernet0/0/0/8\n description To Sniffer\n no ip address\n ipv6 address 3001:1:ca9::1/64\n no shutdown\n!\nrouter ospf 1\n area 0\n  interface Loopback0\n  !\n  interface GigabitEthernet0/0/0/0\n  !\n  interface GigabitEthernet0/0/0/1\n  !\n !\n!\nrouter ospfv3 1\n area 0\n  interface Loopback0\n  !\n  interface GigabitEthernet0/0/0/0\n  !\n  interface GigabitEthernet0/0/0/1\n  !\n !\n!\nrouter bgp 65000\n address-family ipv4 unicast\n  network 1.1.1.1/32\n !\n address-family ipv6 unicast\n  network 3001:1:ca9::/64\n !\n session-group internal-peers\n  remote-as 65000\n  update-source Loopback0\n !\n neighbor-group internal-peers\n  use session-group internal-peers\n  address-family ipv4 unicast\n  !\n  address-family ipv6 unicast\n  !\n !\n neighbor 3001:2::2\n  use neighbor-group internal-peers\n !\n neighbor 3001:3::3\n  use neighbor-group internal-peers\n !\n neighbor 3001:4::4\n  use neighbor-group internal-peers\n !\n!\nend\n",
+                "config_id": "491107528983019523",
+                "emulation_id": "491106973407707139",
+                "id": "491107527905476611",
+                "interfaces": [
+                    "gigabit0/0/[0-9]"
+                ],
+                "is_enabled": true,
+                "model_id": "408772694611460097",
+                "model_name": "IOS-XR",
+                "name": "Router1",
+                "slug": "router1",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "346274673784750081",
+                "vendor_name": "Cisco",
+                "version_id": "440231901209100289",
+                "version_name": "6.5.3",
+                "xaxis": 808.440002441406,
+                "yaxis": 591.688842773438
+            },
+            {
+                "can_snapshot": false,
+                "config": "set system host-name router3\nset interfaces ge-0/0/0 unit 0 description \"To Router1\"\nset interfaces ge-0/0/0 unit 0 family inet address 10.13.0.3/24\nset interfaces ge-0/0/0 unit 0 family inet6 address 3001:13::3/64\nset interfaces ge-0/0/1 unit 0 description \"To Router4\"\nset interfaces ge-0/0/1 unit 0 family inet address 10.34.0.3/24\nset interfaces ge-0/0/1 unit 0 family inet6 address 3001:34::3/64\nset interfaces lo0 unit 0 family inet address 3.3.3.3/32\nset interfaces lo0 unit 0 family inet6 address 3001:3::3/64\nset policy-options policy-statement bgp-connected term 1 from route-filter 3.3.3.3/32 exact\nset policy-options policy-statement bgp-connected term 1 then accept\nset routing-instances mgmt_junos description \"Management VRF\"\nset routing-options router-id 3.3.3.3\nset routing-options autonomous-system 65000\nset protocols bgp family inet unicast\nset protocols bgp family inet6 unicast\nset protocols bgp group internal-peers type internal\nset protocols bgp group internal-peers local-address 3001:3::3\nset protocols bgp group internal-peers family inet unicast local-ipv4-address 3.3.3.3\nset protocols bgp group internal-peers family inet6 unicast\nset protocols bgp group internal-peers export bgp-connected\nset protocols bgp group internal-peers neighbor 3001:1::1\nset protocols bgp group internal-peers neighbor 3001:2::2\nset protocols bgp group internal-peers neighbor 3001:4::4\nset protocols ospf area 0.0.0.0 interface lo0.0\nset protocols ospf area 0.0.0.0 interface ge-0/0/0.0\nset protocols ospf area 0.0.0.0 interface ge-0/0/1.0\nset protocols ospf3 area 0.0.0.0 interface lo0.0\nset protocols ospf3 area 0.0.0.0 interface ge-0/0/0.0\nset protocols ospf3 area 0.0.0.0 interface ge-0/0/1.0",
+                "config_id": "491107582902501377",
+                "emulation_id": "491106973407707139",
+                "id": "491107581854744579",
+                "interfaces": [
+                    "ge-0/0/[0-48]"
+                ],
+                "is_enabled": true,
+                "model_id": "302946507183751169",
+                "model_name": "MX",
+                "name": "Router3",
+                "slug": "router3",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "302946507091476481",
+                "vendor_name": "Juniper",
+                "version_id": "443657913207259139",
+                "version_name": "18.4R1.9",
+                "xaxis": 970.983642578125,
+                "yaxis": 742.707702636719
+            },
+            {
+                "can_snapshot": false,
+                "config": "set system host-name router4\nset interfaces ge-0/0/0 unit 0 description \"To Router2\"\nset interfaces ge-0/0/0 unit 0 family inet address 10.24.0.4/24\nset interfaces ge-0/0/0 unit 0 family inet6 address 3001:24::4/64\nset interfaces ge-0/0/1 unit 0 description \"To Router3\"\nset interfaces ge-0/0/1 unit 0 family inet address 10.34.0.4/24\nset interfaces ge-0/0/1 unit 0 family inet6 address 3001:34::4/64\nset interfaces lo0 unit 0 family inet address 4.4.4.4/32\nset interfaces lo0 unit 0 family inet6 address 3001:4::4/64\nset policy-options policy-statement bgp-connected term 1 from route-filter 4.4.4.4/32 exact\nset policy-options policy-statement bgp-connected term 1 then accept\nset routing-instances mgmt_junos description \"Management VRF\"\nset routing-options router-id 4.4.4.4\nset routing-options autonomous-system 65000\nset protocols bgp family inet unicast\nset protocols bgp family inet6 unicast\nset protocols bgp group internal-peers type internal\nset protocols bgp group internal-peers local-address 3001:4::4\nset protocols bgp group internal-peers family inet unicast local-ipv4-address 4.4.4.4\nset protocols bgp group internal-peers family inet6 unicast\nset protocols bgp group internal-peers export bgp-connected\nset protocols bgp group internal-peers neighbor 3001:1::1\nset protocols bgp group internal-peers neighbor 3001:2::2\nset protocols bgp group internal-peers neighbor 3001:3::3\nset protocols ospf area 0.0.0.0 interface lo0.0\nset protocols ospf area 0.0.0.0 interface ge-0/0/0.0\nset protocols ospf area 0.0.0.0 interface ge-0/0/1.0\nset protocols ospf3 area 0.0.0.0 interface lo0.0\nset protocols ospf3 area 0.0.0.0 interface ge-0/0/0.0\nset protocols ospf3 area 0.0.0.0 interface ge-0/0/1.0",
+                "config_id": "491107626265640963",
+                "emulation_id": "491106973407707139",
+                "id": "491107625395716097",
+                "interfaces": [
+                    "ge-0/0/[0-48]"
+                ],
+                "is_enabled": true,
+                "model_id": "302946507183751169",
+                "model_name": "MX",
+                "name": "Router4",
+                "slug": "router4",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "302946507091476481",
+                "vendor_name": "Juniper",
+                "version_id": "443657913207259139",
+                "version_name": "18.4R1.9",
+                "xaxis": 1135.10668945312,
+                "yaxis": 597.022216796875
+            },
+            {
+                "can_snapshot": true,
+                "config_id": null,
+                "emulation_id": "491106973407707139",
+                "id": "491107669966422017",
+                "interfaces": [
+                    "eth1"
+                ],
+                "is_enabled": true,
+                "model_id": "461525324183470081",
+                "model_name": "Linux",
+                "name": "ExaBGP",
+                "slug": "exabgp",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "461520421272616961",
+                "vendor_name": "Ubuntu",
+                "version_id": "461529911314415617",
+                "version_name": "18.04",
+                "xaxis": 1102.25134277344,
+                "yaxis": 319.285308837891
+            },
+            {
+                "can_snapshot": true,
+                "config_id": null,
+                "emulation_id": "491106973407707139",
+                "id": "491107854486634497",
+                "interfaces": [
+                    "eth1"
+                ],
+                "is_enabled": true,
+                "model_id": "461525324183470081",
+                "model_name": "Linux",
+                "name": "Sniffer",
+                "slug": "sniffer",
+                "snapshot_id": null,
+                "snapshot_name": null,
+                "status": null,
+                "type": "emulation_device",
+                "user_id": "485260280808112129",
+                "user_name": "matwood",
+                "vendor_id": "461520421272616961",
+                "vendor_name": "Ubuntu",
+                "version_id": "461529911314415617",
+                "version_name": "18.04",
+                "xaxis": 810.251403808594,
+                "yaxis": 360.845275878906
+            }
+        ],
+        "type": "array"
+    },
+    "emulation": {
+        "can_suspend": true,
+        "created_at": 1569944354,
+        "device_count": 6,
+        "end_at": 1569978001,
+        "fqdn": "nanog77-hackathon-basic-demo.facebook.cloud.tesuto.com",
+        "id": "491106973407707139",
+        "is_managed": true,
+        "is_persistent": true,
+        "is_ztp": true,
+        "last_updated": 1569945314,
+        "name": "NANOG77-Hackathon-Basic-Demo",
+        "password": "gAAAAABdk3MiaVn23-lPduV47DsumnYy2o83hP1MHndFTe34a7Dlf1O1_TI3BH-xbjBup-KvSz1DabMfmYbikxpO1Aj9poBijA==",
+        "region": "default",
+        "region_id": "396938376316649476",
+        "reoccuring": false,
+        "slug": "nanog77-hackathon-basic-demo",
+        "start_at": 1569945200,
+        "status": "initializing",
+        "user": "matwood@fb.com",
+        "user_id": "485260280808112129",
+        "user_name": "matwood",
+        "username": "tesutocli"
+    },
+    "topologies": {
+        "data": [
+            {
+                "device": "Router2",
+                "device_id": "491107481154322433",
+                "id": "491108068124196865",
+                "interface": "gigabit0/0/1",
+                "neighbor": "Router4",
+                "neighbor_id": "491107625395716097",
+                "neighbor_interface": "ge-0/0/0",
+                "type": "emulation_topology"
+            },
+            {
+                "device": "Router2",
+                "device_id": "491107481154322433",
+                "id": "491108100345692163",
+                "interface": "gigabit0/0/0",
+                "neighbor": "Router1",
+                "neighbor_id": "491107527905476611",
+                "neighbor_interface": "gigabit0/0/0",
+                "type": "emulation_topology"
+            },
+            {
+                "device": "Router2",
+                "device_id": "491107481154322433",
+                "id": "491108147510312961",
+                "interface": "gigabit0/0/8",
+                "neighbor": "ExaBGP",
+                "neighbor_id": "491107669966422017",
+                "neighbor_interface": "eth1",
+                "type": "emulation_topology"
+            },
+            {
+                "device": "Router1",
+                "device_id": "491107527905476611",
+                "id": "491108014586200065",
+                "interface": "gigabit0/0/1",
+                "neighbor": "Router3",
+                "neighbor_id": "491107581854744579",
+                "neighbor_interface": "ge-0/0/0",
+                "type": "emulation_topology"
+            },
+            {
+                "device": "Router3",
+                "device_id": "491107581854744579",
+                "id": "491108041231466497",
+                "interface": "ge-0/0/1",
+                "neighbor": "Router4",
+                "neighbor_id": "491107625395716097",
+                "neighbor_interface": "ge-0/0/1",
+                "type": "emulation_topology"
+            },
+            {
+                "device": "Sniffer",
+                "device_id": "491107854486634497",
+                "id": "491108124413788161",
+                "interface": "eth1",
+                "neighbor": "Router1",
+                "neighbor_id": "491107527905476611",
+                "neighbor_interface": "gigabit0/0/8",
+                "type": "emulation_topology"
+            }
+        ],
+        "type": "array"
+    },
+    "validators": {
+        "data": [],
+        "type": "array"
+    }
+}
