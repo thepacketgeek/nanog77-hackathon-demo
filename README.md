@@ -120,9 +120,9 @@ And we can see the FlowSpec rule on Router1:
 And Router4:
 
     router4#show bgp ipv6 flow | b Network
-    Network          Next Hop            Metric LocPrf Weight Path
+        Network          Next Hop            Metric LocPrf Weight Path
     * i  Dest:3001:4:B::10/0-128,Source:3001:1:A::10/0-128
-                        3001:2::2
+                          3001:2::2                   65000      0 65010 i
 
 Viola!!! See that the traffic from ::10 is now being diverted through Router2  (and our ::20 traffic continues transiting through Router3) :D
 
