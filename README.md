@@ -83,7 +83,7 @@ Due to the high OSPF cost of Router2's interfaces, it will not be used for trans
      3  3001:34::4 (3001:34::4)  14.091 ms  14.062 ms  14.044 ms
      4  3001:4:b::10 (3001:4:b::10)  22.202 ms  22.186 ms  22.169 ms
     
-    $ traceroute -s 3001:1:a::20 3001:4:b::10
+    host1$ traceroute -s 3001:1:a::20 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
      1  3001:1:a::1 (3001:1:a::1)  7.885 ms  7.730 ms  7.756 ms
      2  3001:13::3 (3001:13::3)  23.147 ms  23.121 ms  23.099 ms
@@ -108,6 +108,8 @@ And we can see the FlowSpec rule on Router1:
                     *[BGP/170] 00:38:34, localpref 65000
                         AS path: 65010 I, validation-state: unverified
                         >  to 3001:2::2
+    
+    
     router1> show firewall filter __flowspec_default_inet6__
 
     Filter: __flowspec_default_inet6__
@@ -116,22 +118,22 @@ And we can see the FlowSpec rule on Router1:
     3001:4:b::10/128,3001:1:a::10/128                    1760                   22
 
 And Router4:
-   
-   router4#show bgp ipv6 flow | b Network
-        Network          Next Hop            Metric LocPrf Weight Path
+
+    router4#show bgp ipv6 flow | b Network
+    Network          Next Hop            Metric LocPrf Weight Path
     * i  Dest:3001:4:B::10/0-128,Source:3001:1:A::10/0-128
                         3001:2::2
 
 Viola!!! See that the traffic from ::10 is now being diverted through Router2  (and our ::20 traffic continues transiting through Router3) :D
 
-    $ traceroute -s 3001:1:a::10 3001:4:b::10
+    host1$ traceroute -s 3001:1:a::10 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
      1  3001:1:a::1 (3001:1:a::1)  2.321 ms  2.241 ms  2.208 ms
      2  3001:12::2 (3001:12::2)  9.576 ms  9.544 ms  9.499 ms
      3  3001:24::4 (3001:24::4)  21.666 ms  21.637 ms  21.618 ms
      4  * 3001:4:b::10 (3001:4:b::10)  21.559 ms  21.502 ms
 
-    $ traceroute -s 3001:1:a::20 3001:4:b::10
+    host1$ traceroute -s 3001:1:a::20 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
      1  3001:1:a::1 (3001:1:a::1)  7.527 ms  7.399 ms  7.399 ms
      2  3001:13::3 (3001:13::3)  14.992 ms  14.953 ms  14.955 ms
@@ -156,14 +158,14 @@ Now that all of the infrastructure support is there, we can add in the detection
 ## Running the script
 The `detect.py` script can be run to sniff packets on the wire:
 
-    $ ./detect.py
+    sniffer$ ./detect.py
     Detecting retransmits from wire...
 
 It will analyze sniffed TCP flows for retransmits and send messages them to the ExaBGP host specified in the Python file.
 
 If you want to trigger from captured packets instead, just pass in a filepath of a `pcap` file:
 
-    $ ./detect.py host_retransmit.pcap
+    sniffer$ ./detect.py host_retransmit.pcap
     INFO:root:Detecting retransmits from host_retransmit.pcap...
     reading from file host_retransmit.pcap, link-type EN10MB (Ethernet)
     DEBUG:root:Sending command to ExaBGP: announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302
@@ -226,7 +228,7 @@ To verify that the flow's packets are being affected, check the internal FlowSpe
 # References
 A big thanks to all the tools and articles that helped make this demo possible:
 - ["BGP Flowspec redirect with ExaBGP" by Tim Gregory](https://tgregory.org/2018/01/31/bgp-flowspec-redirect-with-exabgp/)
-- ["Using BGP Flowspec (DDoS Mitigation)"](https://archive.nanog.org/sites/default/files/tuesday_general_ddos_ryburn_63.16.pdf) [[video](https://www.youtube.com/watch?v=ttDUoDf6xzM&t=1935s)]
+- ["DDoS Mitigation using BGP FlowSpec"](https://archive.nanog.org/sites/default/files/tuesday_general_ddos_ryburn_63.16.pdf) [[video](https://www.youtube.com/watch?v=ttDUoDf6xzM&t=1935s)]
 - [ExaBGP](https://github.com/Exa-Networks/exabgp): [Interacting from the API](https://github.com/Exa-Networks/exabgp/wiki/Controlling-ExaBGP-:-interacting-from-the-API)
 - [Scapy](https://scapy.net/)
 - [Tesuto](https://www.tesuto.com/) - Network Emulation
