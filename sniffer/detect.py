@@ -68,7 +68,7 @@ def trigger_exabgp(dst_ip: str):
 
 
 def process_packet(packet: Packet) -> Optional[str]:
-    """ Process the incoming packet, checking if it's a retransmit
+    """ Process the incoming packet
 
         Since this is the `prn` callback in Scapy's `sniff()` function,
         whatever is returned will be output to the console
