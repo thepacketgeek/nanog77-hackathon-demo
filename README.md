@@ -212,6 +212,16 @@ And Router1:
                     *[BGP/170] 00:07:28, localpref 65000
                         AS path: 65010 I, validation-state: unverified
                         >  to 3001:2::2
+    
+To verify that the flow's packets are being affected, check the internal FlowSpec firewall:
+
+    router1> show firewall filter __flowspec_default_inet6__
+
+    Filter: __flowspec_default_inet6__
+    Counters:
+    Name                                                Bytes              Packets
+    3001:1:a::10/128,3001:4:b::10/128                   15872                  124
+    3001:4:b::10/128,3001:1:a::10/128                    2000                   25
 
 # References
 A big thanks to all the tools and articles that helped make this demo possible:
