@@ -69,8 +69,7 @@ class FlowStatus(object):
         Hashable so it can be used as a Dict key (like in a Counter)
     """
 
-    def __init__(self, flow_key: FlowKey) -> None:
-        self.flow_key = flow_key
+    def __init__(self) -> None:
         self.retransmits = 0
         # Sequence is Tuple[seq, ack]
         self.last_sequence: Tuple(int, int) = (0, 0)
@@ -146,7 +145,7 @@ def process_packet(packet: Packet) -> Optional[str]:
 
     if key not in flows:
         # Initialize a new flow
-        flows[key] = FlowStatus(key)
+        flows[key] = FlowStatus()
 
     try:
         flow_retransmits = flows[key].analyze(packet)
