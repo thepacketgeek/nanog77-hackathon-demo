@@ -22,6 +22,7 @@ There are 4 routers and 2 Ubuntu hosts. The network has:
 - Router2 advertises the route NLRI to the rest of the network with a next-hop of itself, in order to draw the interesting traffic towards it.
 - Router1 and Router4 install the advertised route (since the match is /32 or /128 and local-preference is high) and redirect traffic to the next-hop (in this case, Router2).
 
+![Redirected Traffic](./RedirectedTraffic.png)
 
 # Setting up the Demo
 We'll need the following components setup to get the Demo up and running. There are guides to setup each component along with steps for verification along the way. Follow these guides in the order specified:
