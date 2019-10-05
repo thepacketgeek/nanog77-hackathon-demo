@@ -22,4 +22,4 @@ Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `de
     ping -c 3 3001:2::2
 
     # Download the test .pcap file:
-    wget -O traffic.pcap https://github.com/thepacketgeek/nanog77-hackathon-demo/blob/basic-bgp/sniffer/traffic.pcap
+    wget -O traffic.pcap https://github.com/thepacketgeek/nanog77-hackathon-demo/raw/basic-bgp/sniffer/traffic.pcap
