@@ -11,10 +11,9 @@ Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `de
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install scapy --user
 
-    # Create python file
-    touch ~/detect.py
+    # Download existing detect.py file from GitHub
+    wget https://github.com/thepacketgeek/nanog77-hackathon-demo/raw/flowspec/sniffer/detect.py
     chmod +x detect.py
-    # Copy and paste the file contents from GitHub
 
     # IPv6 SLAAC will learn the 3001:1:ca9::/64 prefix and setup default route to 3001:1:ca9::1
     sudo ip addr add 3001:1:ca9::10/64 dev eth1
@@ -24,7 +23,7 @@ Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `de
     ping -c 3 3001:2::2
 
     # Download the test .pcap file:
-    wget https://github.com/thepacketgeek/nanog77-hackathon-demo/blob/flowspec/sniffer/host_retransmit.pcap
+    wget https://github.com/thepacketgeek/nanog77-hackathon-demo/raw/flowspec/sniffer/host_retransmit.pcap
 
 
 Once this is setup, [continue with the demo](../)...
