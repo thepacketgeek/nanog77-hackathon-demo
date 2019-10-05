@@ -12,8 +12,7 @@ Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `de
     pip3 install scapy --user
 
     # Create python file
-    touch ~/detect.py
-    chmod +x detect.py
+    wget -O detect.py https://github.com/thepacketgeek/nanog77-hackathon-demo/blob/basic-bgp/sniffer/detect.py
     # Copy and paste the file contents from GitHub
 
     # IPv6 SLAAC will learn the 3001:1:ca9::/64 prefix and setup default route to 3001:1:ca9::1
