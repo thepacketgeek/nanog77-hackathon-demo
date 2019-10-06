@@ -6,13 +6,13 @@ In order to get the Detection host up and running, we'll need:
 
 
 # Installing Python & Scapy
-Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `detect.py` script running:
+Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `detect_dns.py` script running:
 
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install scapy --user
 
     # Create python file
-    wget -O detect.py https://github.com/thepacketgeek/nanog77-hackathon-demo/blob/basic-bgp/sniffer/detect.py
+    wget -O detect_dns.py https://github.com/thepacketgeek/nanog77-hackathon-demo/blob/basic-bgp/sniffer/detect_dns.py
     # Copy and paste the file contents from GitHub
 
     # IPv6 SLAAC will learn the 3001:1:ca9::/64 prefix and setup default route to 3001:1:ca9::1

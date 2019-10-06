@@ -25,10 +25,10 @@ EXABGP_HOST = "[3001:2:e10a::10]:5000"
 logging.basicConfig(level=logging.DEBUG)
 
 
-BAD_QUERIES = set([
+BAD_QUERIES = {
     "badhacks.com.",
     "malicious-mail-order.net.",
-])
+}
 
 
 def analyze(packet: Packet) -> Optional[str]:

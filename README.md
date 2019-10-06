@@ -17,7 +17,7 @@ There are 4 routers and 2 Ubuntu hosts. The network has:
 ![Steady State](./SteadyState.png)
 
 - For this demo, our interesting traffic are DNS Requests/Responses for blacklisted hostnames.
-- When the interesting traffic flows are detected (via our Sniffer and the detect.py script), an API call is made to the ExaBGP host.
+- When the interesting traffic flows are detected (via our Sniffer and the detect_dns.py script), an API call is made to the ExaBGP host.
 - ExaBGP will then announce a route into the eBGP peering session with Router2.
 - Router2 advertises the route NLRI to the rest of the network with a next-hop of itself, in order to draw the interesting traffic towards it.
 - Router1 and Router4 install the advertised route (since the match is /32 or /128 and local-preference is high) and redirect traffic to the next-hop (in this case, Router2).
@@ -64,16 +64,16 @@ And advertised from Router2 to other iBGP peers:
 We're now to the point where we can enable automatic detection from our Sniffer host
 
 ## Running the script
-The `detect.py` script can be run to sniff packets on the wire:
+The `detect_dns.py` script can be run to sniff packets on the wire:
 
-    sniffer$ ./detect.py
+    sniffer$ ./detect_dns.py
     Detecting DNS queries from wire...
 
 It will analyze DNS Responses send messages to the ExaBGP host specified in the Python file.
 
 If you want to trigger from captured packets instead, just pass a filepath to a Pcap file:
 
-    sniffer$ ./detect.py traffic.pcap 
+    sniffer$ ./detect_dns.py traffic.pcap 
     INFO:root:Detecting DNS queries from traffic.pcap...
     WARNING:root:Request for badhacks.com.: 3001:10:66::5
     DEBUG:root:Sending command to ExaBGP: announce route 3001:10:66::5/128 next-hop self
@@ -81,7 +81,7 @@ If you want to trigger from captured packets instead, just pass a filepath to a 
 
 
 ## Verifying the ExaBGP Influence
-Running the `detect.py` script against the included traffic.pcap file, we can see that the command was sent to ExaBGP and we now see a new route for the destination host 3001:10:66::5 that `badhacks.com` resolves to
+Running the `detect_dns.py` script against the included traffic.pcap file, we can see that the command was sent to ExaBGP and we now see a new route for the destination host 3001:10:66::5 that `badhacks.com` resolves to
 
 On Router2:
 
