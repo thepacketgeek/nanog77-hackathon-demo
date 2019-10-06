@@ -6,14 +6,14 @@ In order to get the Detection host up and running, we'll need:
 
 
 # Installing Python & Scapy
-Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `detect.py` script running:
+Similar to the ExaBGP host, we'll need to install Python, Scapy, and get the `detect_retransmits.py` script running:
 
     sudo apt-get install python3 python3-venv python3-pip -y
     pip3 install scapy --user
 
-    # Download existing detect.py file from GitHub
-    wget https://github.com/thepacketgeek/nanog77-hackathon-demo/raw/flowspec/sniffer/detect.py
-    chmod +x detect.py
+    # Download existing detect_retransmits.py file from GitHub
+    wget https://github.com/thepacketgeek/nanog77-hackathon-demo/raw/flowspec/sniffer/detect_retransmits.py
+    chmod +x detect_retransmits.py
 
     # IPv6 SLAAC will learn the 3001:1:ca9::/64 prefix and setup default route to 3001:1:ca9::1
     sudo ip addr add 3001:1:ca9::10/64 dev eth1

@@ -22,7 +22,7 @@ The network has:
 
 ![SteadyStateTrafficFlow](SteadyState.png)
 
-- When the high TCP Retransmit flows are detected (via our [Sniffer](sniffer/) and the [`detect.py`](sniffer/detect.py) script), an API call is made to the ExaBGP host.
+- When the high TCP Retransmit flows are detected (via our [Sniffer](sniffer/) and the [`detect_retransmits.py`](sniffer/detect_retransmits.py) script), an API call is made to the ExaBGP host.
 - ExaBGP will then announce a FlowSpec flow route into the eBGP peering session with Router2.
 - Router2 advertises the FlowSpec NLRI to the rest of the network with a next-hop of itself, in order to draw the interesting traffic towards it.
 - Router1 and Router4 have config to install the FlowSpec routes and redirect traffic to the next-hop (in this case, Router2).
@@ -156,16 +156,16 @@ Now that all of the infrastructure support is there, we can add in the detection
 - First, setup the [Sniffer host](./sniffer):
 
 ## Running the script
-The `detect.py` script can be run to sniff packets on the wire:
+The `detect_retransmits.py` script can be run to sniff packets on the wire:
 
-    sniffer$ ./detect.py
+    sniffer$ ./detect_retransmits.py
     Detecting retransmits from wire...
 
 It will analyze sniffed TCP flows for retransmits and send messages them to the ExaBGP host specified in the Python file.
 
 If you want to trigger from captured packets instead, just pass in a filepath of a `pcap` file:
 
-    sniffer$ ./detect.py host_retransmit.pcap
+    sniffer$ ./detect_retransmits.py host_retransmit.pcap
     INFO:root:Detecting retransmits from host_retransmit.pcap...
     reading from file host_retransmit.pcap, link-type EN10MB (Ethernet)
     DEBUG:root:Sending command to ExaBGP: announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302
@@ -181,7 +181,7 @@ If you want to trigger from captured packets instead, just pass in a filepath of
     
 
 ## Verifying the ExaBGP Influence
-Running the `detect.py` script against the included host_retransmit.pcap file, we can see that the command was sent to ExaBGP and we now see a new FlowSpec route for the `3001:1:a::10:58719 <--> 3001:4:b::10:443` flow
+Running the `detect_retransmits.py` script against the included host_retransmit.pcap file, we can see that the command was sent to ExaBGP and we now see a new FlowSpec route for the `3001:1:a::10:58719 <--> 3001:4:b::10:443` flow
 
 On Router2:
 
