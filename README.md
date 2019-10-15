@@ -97,38 +97,31 @@ Due to the high OSPF cost of Router2's interfaces, it will not be used for trans
 
 
 ## Traffic Exception, FlowSpec rule injected
-From Host1, we'll simulate a FlowSpec announcement (that would typically be coming from Sniffer). Note that the FlowSpec route is unidirectional, so return traffic from Host2 will still transit through Router2. Since we most likely want the bidirectional flow to transit Router2 for analysis, we'd want our traffic trigger to advertise both directions of the flow to ExaBGP. E.g.:
+From Host1, we'll simulate a FlowSpec announcement (that would typically be coming from Sniffer): 
 
     curl --form "command=announce flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
         http://[3001:2:e10a::10]:5000/command
-    curl --form "command=announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
-        http://[3001:2:e10a::10]:5000/command
-
-We can see the FlowSpec advertisements on Router1:
+    
+We can see the FlowSpec advertisement on Router1:
 
     router1> show route table inet6flow.0
 
-    inet6flow.0: 2 destinations, 2 routes (2 active, 0 holddown, 0 hidden)
+    inet6flow.0: 1 destinations, 1 routes (1 active, 0 holddown, 0 hidden)
     + = Active Route, - = Last Active, * = Both
 
     3001:1:a::10/128,3001:4:b::10/128/term:1
                     *[BGP/170] 00:01:42, localpref 65000
                         AS path: 65010 I, validation-state: unverified
                         >  to 3001:2::2
-    3001:4:b::10/128,3001:1:a::10/128/term:2
-                    *[BGP/170] 00:01:56, localpref 65000
-                        AS path: 65010 I, validation-state: unverified
-                        >  to 3001:2::2
     
-And the internal firewall filter that enables Flowspec actions:
+And in the internal firewall filter that enables Flowspec actions:
 
     router1> show firewall filter __flowspec_default_inet6__
 
     Filter: __flowspec_default_inet6__
     Counters:
     Name                                                Bytes              Packets
-    3001:1:a::10/128,3001:4:b::10/128                   43920                  549
-    3001:4:b::10/128,3001:1:a::10/128                       0                    0
+    3001:1:a::10/128,3001:4:b::10/128                   1760                   22
 
 Also on Router4:
 
@@ -137,10 +130,7 @@ Also on Router4:
         Network            Next Hop            Metric LocPrf Weight Path
     * iDest:3001:1:a::10/0-128,Source:3001:4:b::10/0-128/304
                            3001:2::2                   65000      0 65010 i
-    * iDest:3001:4:b::10/0-128,Source:3001:1:a::10/0-128/304
-                           3001:2::2                   65000      0 65010 i
 
-    Processed 2 prefixes, 2 paths
 
 Viola!!! See that the traffic from ::10 is now being diverted through Router2  (and our ::20 traffic continues transiting through Router3) :D
 
@@ -149,7 +139,7 @@ Viola!!! See that the traffic from ::10 is now being diverted through Router2  (
      1  3001:1:a::1 (3001:1:a::1)  2.321 ms  2.241 ms  2.208 ms
      2  3001:12::2 (3001:12::2)  9.576 ms  9.544 ms  9.499 ms
      3  3001:24::4 (3001:24::4)  21.666 ms  21.637 ms  21.618 ms
-     4  * 3001:4:b::10 (3001:4:b::10)  21.559 ms  21.502 ms
+     4  3001:4:b::10 (3001:4:b::10)  21.559 ms  21.502 ms
 
     host1$ traceroute -s 3001:1:a::20 3001:4:b::10
     traceroute to 3001:4:b::10 (3001:4:b::10), 30 hops max, 80 byte packets
@@ -158,12 +148,9 @@ Viola!!! See that the traffic from ::10 is now being diverted through Router2  (
      3  3001:34::4 (3001:34::4)  30.839 ms  30.804 ms  30.805 ms
      4  3001:4:b::10 (3001:4:b::10)  22.710 ms  22.618 ms  22.583 ms
 
-
-You can remove the Flowspec routes with:
+You can remove the Flowspec advertisement with:
 
     curl --form "command=withdraw flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
-         http://[3001:2:e10a::10]:5000/command
-    curl --form "command=withdraw flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
          http://[3001:2:e10a::10]:5000/command
 
 # Finally, Automatic Detection
