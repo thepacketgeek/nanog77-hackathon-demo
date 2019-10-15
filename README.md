@@ -41,6 +41,7 @@ We need to get our test hosts ready to communicate using the network we've just 
 
 Host1:
 
+    sudo hostnamectl set-hostname Host1
     # Install Traceroute
     sudo apt-get install traceroute
     # Setup networking
@@ -54,6 +55,10 @@ Host1:
 
 Host2:
 
+    sudo hostnamectl set-hostname Host2
+    # Install Traceroute
+    sudo apt-get install traceroute
+    # Setup networking
     sudo ip addr add 3001:4:b::10/64 dev eth1
     sudo ip -6 route add default via 3001:4:b::1
     # Test networking
@@ -92,37 +97,50 @@ Due to the high OSPF cost of Router2's interfaces, it will not be used for trans
 
 
 ## Traffic Exception, FlowSpec rule injected
-From Host1, we'll simulate a FlowSpec announcement (that would typically be coming from Sniffer):
+From Host1, we'll simulate a FlowSpec announcement (that would typically be coming from Sniffer). Note that the FlowSpec route is unidirectional, so return traffic from Host2 will still transit through Router2. Since we most likely want the bidirectional flow to transit Router2 for analysis, we'd want our traffic trigger to advertise both directions of the flow to ExaBGP. E.g.:
 
     curl --form "command=announce flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
         http://[3001:2:e10a::10]:5000/command
+    curl --form "command=announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
+        http://[3001:2:e10a::10]:5000/command
 
-And we can see the FlowSpec rule on Router1:
+We can see the FlowSpec advertisements on Router1:
 
     router1> show route table inet6flow.0
 
-    inet6flow.0: 1 destinations, 1 routes (1 active, 0 holddown, 0 hidden)
+    inet6flow.0: 2 destinations, 2 routes (2 active, 0 holddown, 0 hidden)
     + = Active Route, - = Last Active, * = Both
 
     3001:1:a::10/128,3001:4:b::10/128/term:1
-                    *[BGP/170] 00:38:34, localpref 65000
+                    *[BGP/170] 00:01:42, localpref 65000
+                        AS path: 65010 I, validation-state: unverified
+                        >  to 3001:2::2
+    3001:4:b::10/128,3001:1:a::10/128/term:2
+                    *[BGP/170] 00:01:56, localpref 65000
                         AS path: 65010 I, validation-state: unverified
                         >  to 3001:2::2
     
-    
+And the internal firewall filter that enables Flowspec actions:
+
     router1> show firewall filter __flowspec_default_inet6__
 
     Filter: __flowspec_default_inet6__
     Counters:
     Name                                                Bytes              Packets
-    3001:4:b::10/128,3001:1:a::10/128                    1760                   22
+    3001:1:a::10/128,3001:4:b::10/128                   43920                  549
+    3001:4:b::10/128,3001:1:a::10/128                       0                    0
 
-And Router4:
+Also on Router4:
 
     router4#show bgp ipv6 flow | b Network
-        Network          Next Hop            Metric LocPrf Weight Path
-    * i  Dest:3001:4:B::10/0-128,Source:3001:1:A::10/0-128
-                          3001:2::2                   65000      0 65010 i
+    Tue Oct 15 18:15:06.003 UTC
+        Network            Next Hop            Metric LocPrf Weight Path
+    * iDest:3001:1:a::10/0-128,Source:3001:4:b::10/0-128/304
+                           3001:2::2                   65000      0 65010 i
+    * iDest:3001:4:b::10/0-128,Source:3001:1:a::10/0-128/304
+                           3001:2::2                   65000      0 65010 i
+
+    Processed 2 prefixes, 2 paths
 
 Viola!!! See that the traffic from ::10 is now being diverted through Router2  (and our ::20 traffic continues transiting through Router3) :D
 
@@ -140,14 +158,12 @@ Viola!!! See that the traffic from ::10 is now being diverted through Router2  (
      3  3001:34::4 (3001:34::4)  30.839 ms  30.804 ms  30.805 ms
      4  3001:4:b::10 (3001:4:b::10)  22.710 ms  22.618 ms  22.583 ms
 
-Note that the FlowSpec route is unidirectional, so return traffic from Host2 will still transit through Router2. Since we most likely want the bidirectional flow to transit Router2 for analysis, we'd want our traffic trigger to advertise both directions of the flow to ExaBGP. E.g.:
 
-    curl --form "command=announce flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
-        http://[3001:2:e10a::10]:5000/command
-
-You can remove the Flowspec route with:
+You can remove the Flowspec routes with:
 
     curl --form "command=withdraw flow route source 3001:1:a::10/128 destination 3001:4:b::10/128 redirect 6:302" \
+         http://[3001:2:e10a::10]:5000/command
+    curl --form "command=withdraw flow route source 3001:4:b::10/128 destination 3001:1:a::10/128 redirect 6:302" \
          http://[3001:2:e10a::10]:5000/command
 
 # Finally, Automatic Detection

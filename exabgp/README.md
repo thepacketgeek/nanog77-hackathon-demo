@@ -49,7 +49,7 @@ This should work with copy/paste; confirmations are used along the way for troub
     # Add exabgp conf
     # You can edit and copy/paste this block to replace the ExaBGP config
     echo "process http-api {
-        run /usr/bin/python3 /home/tesutocli/http_api.py;
+        run /usr/bin/python3 $HOME/http_api.py;
         encoder json;
     }
 

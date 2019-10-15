@@ -17,6 +17,6 @@ There are configs for all 4 routers included, you should be able to copy/paste t
 
 - **Router1**: vMX (Junos 18.4R1) ([config](router1.junos.cfg))
 - **Router2**: vMX (Junos 18.4R1) ([config](router2.junos.cfg))
-- **Router3**: CSR1000v (IOS-XE 16.08.1a) ([config](router3.iosxe.cfg))
-- **Router4**: CSR1000v (IOS-XE 16.08.1a) ([config](router4.iosxe.cfg))
+- **Router3**: IOS-XRv 9000 (IOS-XR 6.5.3) ([config](router3.iosxr.cfg))
+- **Router4**: IOS-XRv 9000 (IOS-XR 6.5.3) ([config](router4.iosxr.cfg))
 
