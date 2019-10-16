@@ -40,7 +40,7 @@ def analyze(packet: Packet) -> Optional[str]:
 
         If this packet matches, return the destination IP address
     """
-    if DNS in packet:
+    if packet.haslayer(DNS):
         if (
             packet[DNS].qr  # Is this a Response?
             and packet[DNS].qd.qname.decode() in BAD_QUERIES
