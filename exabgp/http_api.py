@@ -12,14 +12,16 @@ from sys import stdout
 
 app = Flask(__name__)
 
-# Setup a command route to listen for prefix advertisements 
-@app.route('/command', methods=['POST'])
+# Setup a command route to listen for prefix advertisements
+@app.route("/command", methods=["POST"])
 def command():
-    command = request.form['command']
+    command = request.form["command"]
     # Write command to stdout for ExaBGP process to consume
-    stdout.write('%s\n' % command)
+    stdout.write(f"{command}\n")
     stdout.flush()
-    return '%s\n' % command
+    return f"{command}\n"
 
-if __name__ == '__main__':
-    app.run(host='3001:2:e10a::10', port=5000)
+
+if __name__ == "__main__":
+    app.run(host="3001:2:e10a::10", port=5000)
+
