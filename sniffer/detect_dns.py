@@ -45,16 +45,18 @@ def analyze(packet: Packet) -> Optional[str]:
             packet[DNS].qr  # Is this a Response?
             and packet[DNS].qd.qname.decode() in BAD_QUERIES
         ):
-            logging.warning(f"Request for {packet[DNS].qd.qname.decode()}: {packet[DNS].an.rdata}")
+            logging.warning(
+                f"Request for {packet[DNS].qd.qname.decode()}: "
+                f"{packet[DNS].an.rdata}"
+            )
             return packet[DNS].an.rdata
-        
 
 
 def trigger_exabgp(dst_ip: str):
     """ Receive a destination IP address and send to ExaBGP """
     command_template = "announce route {dst_ip}/128 next-hop self"
     command = command_template.format(dst_ip=dst_ip)
-    params = urlencode({'command': command})
+    params = urlencode({"command": command})
     headers = {
         "Content-type": "application/x-www-form-urlencoded",
         "Accept": "text/plain",
@@ -87,7 +89,7 @@ if __name__ == "__main__":
         filepath = None
 
     # Set common kwargs for scapy.sniff()
-    sniff_func = partial(sniff, prn=process_packet, filter="udp port 53")
+    sniff_func = partial(sniff, prn=process_packet, filter="udp src port 53")
 
     if filepath:
         logging.info(f"Detecting DNS queries from {filepath}...")
