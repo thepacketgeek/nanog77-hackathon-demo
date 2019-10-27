@@ -17,7 +17,7 @@ This should work with copy/paste; confirmations are used along the way for troub
     # Confirm Python installation
     python3 -V
     pip3 list | grep exabgp
-    pip3 list | grep flask
+    pip3 list | grep Flask
 
     # Setup networking
     sudo ip addr add 3001:2:e10a::10/64 dev eth1
